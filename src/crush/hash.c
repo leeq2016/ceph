@@ -21,6 +21,27 @@
 		c = c-a;  c = c-b;  c = c^(b>>15);	\
 	} while (0)
 
+#define crush_hashmix_simdx2(a, b, c, a1, b1, c1) {\
+		a = vsubq_u32(a, b); a1 = vsubq_u32(a1, b1); a = vsubq_u32(a, c); a1 = vsubq_u32(a1, c1);\
+			a = veorq_u32(a, vshrq_n_u32(c, 13)); a1 = veorq_u32(a1, vshrq_n_u32(c1, 13));\
+		b = vsubq_u32(b, c); b1 = vsubq_u32(b1, c1); b = vsubq_u32(b, a); b1 = vsubq_u32(b1, a1);\
+			b = veorq_u32(b, vshlq_n_u32(a, 8)); b1 = veorq_u32(b1, vshlq_n_u32(a1, 8));\
+		c = vsubq_u32(c, a); c1 = vsubq_u32(c1, a1); c = vsubq_u32(c, b); c1 = vsubq_u32(c1, b1);\
+			c = veorq_u32(c, vshrq_n_u32(b, 13)); c1 = veorq_u32(c1, vshrq_n_u32(b1, 13));\
+		a = vsubq_u32(a, b); a1 = vsubq_u32(a1, b1); a = vsubq_u32(a, c); a1 = vsubq_u32(a1, c1);\
+			a = veorq_u32(a, vshrq_n_u32(c, 12)); a1 = veorq_u32(a1, vshrq_n_u32(c1, 12));\
+		b = vsubq_u32(b, c); b1 = vsubq_u32(b1, c1); b = vsubq_u32(b, a); b1 = vsubq_u32(b1, a1);\
+			b = veorq_u32(b, vshlq_n_u32(a, 16)); b1 = veorq_u32(b1, vshlq_n_u32(a1, 16));\
+		c = vsubq_u32(c, a); c1 = vsubq_u32(c1, a1); c = vsubq_u32(c, b); c1 = vsubq_u32(c1, b1);\
+			c = veorq_u32(c, vshrq_n_u32(b, 5)); c1 = veorq_u32(c1, vshrq_n_u32(b1, 5));\
+		a = vsubq_u32(a, b); a1 = vsubq_u32(a1, b1); a = vsubq_u32(a, c); a1 = vsubq_u32(a1, c1);\
+			a = veorq_u32(a, vshrq_n_u32(c, 3)); a1 = veorq_u32(a1, vshrq_n_u32(c1, 3));\
+		b = vsubq_u32(b, c); b1 = vsubq_u32(b1, c1); b = vsubq_u32(b, a); b1 = vsubq_u32(b1, a1);\
+			b = veorq_u32(b, vshlq_n_u32(a, 10)); b1 = veorq_u32(b1, vshlq_n_u32(a1, 10));\
+		c = vsubq_u32(c, a); c1 = vsubq_u32(c1, a1); c = vsubq_u32(c, b); c1 = vsubq_u32(c1, b1);\
+			c = veorq_u32(c, vshrq_n_u32(b, 15)); c1 = veorq_u32(c1, vshrq_n_u32(b1, 15));\
+	}while (0);
+
 #define crush_hash_seed 1315423911
 
 static __u32 crush_hash32_rjenkins1(__u32 a)
