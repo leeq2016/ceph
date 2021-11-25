@@ -21,7 +21,8 @@
 		c = c-a;  c = c-b;  c = c^(b>>15);	\
 	} while (0)
 
-#define crush_hashmix_simdx2(a, b, c, a1, b1, c1) {\
+#ifdef __aarch64__
+#define crush_hashmix_neonx2(a, b, c, a1, b1, c1) {\
 		a = vsubq_u32(a, b); a1 = vsubq_u32(a1, b1); a = vsubq_u32(a, c); a1 = vsubq_u32(a1, c1);\
 			a = veorq_u32(a, vshrq_n_u32(c, 13)); a1 = veorq_u32(a1, vshrq_n_u32(c1, 13));\
 		b = vsubq_u32(b, c); b1 = vsubq_u32(b1, c1); b = vsubq_u32(b, a); b1 = vsubq_u32(b1, a1);\
@@ -41,6 +42,7 @@
 		c = vsubq_u32(c, a); c1 = vsubq_u32(c1, a1); c = vsubq_u32(c, b); c1 = vsubq_u32(c1, b1);\
 			c = veorq_u32(c, vshrq_n_u32(b, 15)); c1 = veorq_u32(c1, vshrq_n_u32(b1, 15));\
 	}while (0);
+#endif
 
 #define crush_hash_seed 1315423911
 
@@ -140,6 +142,61 @@ __u32 crush_hash32_3(int type, __u32 a, __u32 b, __u32 c)
 		return 0;
 	}
 }
+
+#ifdef __aarch64__
+void crush_hash32_3_neonx2(int type, __u32 a[CRUSH_NEON_NUM * 2],
+					__u32 b[CRUSH_NEON_NUM * 2], __u32 c[CRUSH_NEON_NUM * 2], __u32 hash[CRUSH_NEON_NUM * 2])
+{
+	uint32x4_t a1;
+	uint32x4_t a2;
+	uint32x4_t b1;
+	uint32x4_t b2;
+	uint32x4_t c1;
+	uint32x4_t c2;
+	uint32x4_t hash1;
+	uint32x4_t hash2;
+	uint32x4_t x1;
+	uint32x4_t x2;
+	uint32x4_t y1;
+	uint32x4_t y2;
+	uint32x4_t tmp;
+
+	switch (type) {
+	case CRUSH_HASH_RJENKINS1:
+		a1 = vld1q_u32(&a[0]);
+		a2 = vld1q_u32(&a[CRUSH_NEON_NUM]);
+		b1 = vld1q_u32(&b[0]);
+		b2 = vld1q_u32(&b[CRUSH_NEON_NUM]);
+		c1 = vld1q_u32(&c[0]);
+		c2 = vld1q_u32(&c[CRUSH_NEON_NUM]);
+
+		hash1 = vdupq_n_u32(crush_hash_seed);
+		x1 = vdupq_n_u32(231232);
+		y1 = vdupq_n_u32(1232);
+		hash2 = vdupq_n_u32(crush_hash_seed);
+		x2 = vdupq_n_u32(231232);
+		y2 = vdupq_n_u32(1232);
+
+		hash1 = veorq_u32(hash1, a1);
+		tmp = veorq_u32(b1, c1);
+		hash1 = veorq_u32(hash1, tmp);
+		hash2 = veorq_u32(hash2, a2);
+		tmp = veorq_u32(b2, c2);
+		hash2 = veorq_u32(hash2, tmp);
+
+		crush_hashmix_neonx2(a1, b1, hash1, a2, b2, hash2);
+		crush_hashmix_neonx2(c1, x1, hash1, c2, x2, hash2);
+		crush_hashmix_neonx2(y1, a1, hash1, y2, a2, hash2);
+		crush_hashmix_neonx2(b1, x1, hash1, b2, x2, hash2);
+		crush_hashmix_neonx2(y1, c1, hash1, y2, c2, hash2);
+
+		vst1q_u32(&hash[0], hash1);
+		vst1q_u32(&hash[CRUSH_NEON_NUM], hash2);
+	default:
+		return;
+	}
+}
+#endif
 
 __u32 crush_hash32_4(int type, __u32 a, __u32 b, __u32 c, __u32 d)
 {
