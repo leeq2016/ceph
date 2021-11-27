@@ -342,7 +342,7 @@ static inline void generate_exponential_distribution_neonx2(int type, int x[CRUS
 {
 	unsigned int u[CRUSH_NEON_NUM * 2];
 	crush_hash32_3_neonx2(type, x, y, z, u);
-	for (int i = 0; i < CRUSH_NEON_NUM; i++) {
+	for (int i = 0; i < CRUSH_NEON_NUM * 2; i++) {
 		u[i] &= 0xffff;
 	}
 	__s64 ln;
