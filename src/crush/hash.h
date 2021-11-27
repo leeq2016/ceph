@@ -11,6 +11,12 @@
 
 #define CRUSH_HASH_DEFAULT CRUSH_HASH_RJENKINS1
 
+#ifdef __aarch64__
+#define CRUSH_NEON_NUM 4
+extern void crush_hash32_3_neonx2(int type, __u32 a[CRUSH_NEON_NUM * 2],
+		__u32 b[CRUSH_NEON_NUM * 2], __u32 c[CRUSH_NEON_NUM * 2], __u32 hash[CRUSH_NEON_NUM * 2]);
+#endif
+
 extern const char *crush_hash_name(int type);
 
 extern __u32 crush_hash32(int type, __u32 a);
