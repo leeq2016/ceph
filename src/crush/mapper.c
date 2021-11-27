@@ -336,15 +336,60 @@ static inline __s64 generate_exponential_distribution(int type, int x, int y, in
 	return div64_s64(ln, weight);
 }
 
+#ifdef __aarch64__
+static inline void generate_exponential_distribution_neonx2(int type, int x[CRUSH_NEON_NUM * 2], int y[CRUSH_NEON_NUM * 2],
+			int z[CRUSH_NEON_NUM * 2], int weight[CRUSH_NEON_NUM * 2], __s64 draw[CRUSH_NEON_NUM * 2])
+{
+	unsigned int u[CRUSH_NEON_NUM * 2];
+	crush_hash32_3_neonx2(type, x, y, z, u);
+	for (int i = 0; i < CRUSH_NEON_NUM; i++) {
+		u[i] &= 0xffff;
+	}
+	__s64 ln;
+	for (int i = 0; i < CRUSH_NEON_NUM * 2; i++) {
+		ln = crush_ln(u[i]) - 0x1000000000000ll;
+		draw[i] = div64_s64(ln, weight[i]);
+	}
+
+	return;
+}
+#endif
+
 static int bucket_straw2_choose(const struct crush_bucket_straw2 *bucket,
 				int x, int r, const struct crush_choose_arg *arg,
                                 int position)
 {
-	unsigned int i, high = 0;
+	unsigned int i = 0;
+	unsigned int high = 0;
 	__s64 draw, high_draw = 0;
         __u32 *weights = get_choose_arg_weights(bucket, arg, position);
         __s32 *ids = get_choose_arg_ids(bucket, arg);
-	for (i = 0; i < bucket->h.size; i++) {
+#ifdef __aarch64__
+	__s64 draw_neon[CRUSH_NEON_NUM * 2];
+	int x_neon[CRUSH_NEON_NUM * 2];
+	int r_neon[CRUSH_NEON_NUM * 2];
+	for (int j = 0; j < CRUSH_NEON_NUM * 2; j++) {
+		x_neon[j] = x;
+		r_neon[j] = r;
+	}
+	if (bucket->h.size >= CRUSH_NEON_NUM * 2) {
+		for (; i <= bucket->h.size - (CRUSH_NEON_NUM * 2); i += (CRUSH_NEON_NUM * 2)) {
+			generate_exponential_distribution_neonx2(bucket->h.hash, x_neon, &ids[i], r_neon, &weights[i], draw_neon);
+			for (int j = 0; j < CRUSH_NEON_NUM * 2; j++) {
+				if (weights[i + j]) {
+					draw = draw_neon[j];
+				} else {
+					draw = S64_MIN;
+				}
+				if (i + j == 0 || draw > high_draw) {
+					high = i + j;
+					high_draw = draw;
+				}
+			}
+		}
+	}
+#endif
+	for (; i < bucket->h.size; i++) {
                 dprintk("weight 0x%x item %d\n", weights[i], ids[i]);
 		if (weights[i]) {
 			draw = generate_exponential_distribution(bucket->h.hash, x, ids[i], r, weights[i]);
